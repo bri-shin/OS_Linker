@@ -80,6 +80,7 @@ def TwoPassLinker(textInput):
 
             # cI = 5 &   replaceIndex = 4
             replaceIndex = listInput[currentIndex+1]
+            print("First replace Index is", replaceIndex)
 
             while(lastThree != 777):
                 if changedElements[replaceIndex] is not False:
@@ -98,9 +99,11 @@ def TwoPassLinker(textInput):
 
                 programText[i][replaceIndex] = num
                 replaceIndex = lastThree                    # replaceIndex = 24
+                print("Replace Index = ",replaceIndex)
 
                 num = programText[i][lastThree] // 10
                 lastThree = num % 1000
+                
 
             if changedElements[replaceIndex] is not False:
                 print("ERROR: Multiple Symbols used at Memory Map line {}".format(
@@ -130,7 +133,7 @@ def TwoPassLinker(textInput):
                     programText[i][j] -= address % 1000
                 programText[i][j] = programText[i][j]+(offset*10)
 
-            elif word == 2:
+            elif (programText[i][j] > 9999) and (word == 2):
                 if address % 1000 > 199:
                     print("ERROR: Absolute Address {} used at Memory Map line {} exceeds size of the machine.".format(
                         address, secondPassCounter))
