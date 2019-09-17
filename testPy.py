@@ -17,7 +17,6 @@ def TwoPassLinker(textInput):
 
         # definition line
         n = listInput[currentIndex]     # n = 1,0,0,1
-        print("1st value of n is:", n)
         currentIndex += 1               # currentIndex = 1,13,24,31
         for j in range(n):
 
@@ -46,7 +45,7 @@ def TwoPassLinker(textInput):
             # temp.append(listInput[currentIndex:currentIndex+2])
             temp.append(listInput[currentIndex])
             currentIndex += 1
-        
+
         programText.append(temp)        # current Index = 12, 23, 30
 
     currentIndex = 0
@@ -57,18 +56,26 @@ def TwoPassLinker(textInput):
     # ----- Pass Two -----
     for i in range(moduleSize):
 
+        print("This Pass Number:", i)
+        print("This is",i,"Current Index:", currentIndex)
         # definition line
-        n = listInput[currentIndex]
-        currentIndex += 1 + 2*n
+        n = listInput[currentIndex]     # cI = 0    ;   n = 1
+
+        # n bad value in the 2nd run
+
+        currentIndex += 1 + 2*n         # cI = 3,
+        
 
         # use line
-        n = listInput[currentIndex]
-        currentIndex += 1
+        n = listInput[currentIndex]     # n = 1
+        currentIndex += 1               # cI = 4
         changedElements = [False] * (len(programText[i]))
+
         for j in range(n):
-            num = programText[i][listInput[currentIndex+1]][1]
-            lastThree = num % 1000
-            symbol = listInput[currentIndex]
+            # cI= 5 -> 4   ; num = 70024
+            num = programText[i][listInput[currentIndex+1]] // 10
+            lastThree = num % 1000                  # lastThree= 2
+            symbol = listInput[currentIndex]  # symbol = z
             defined = True
 
             # Error
@@ -77,9 +84,11 @@ def TwoPassLinker(textInput):
                 defined = False
             else:
                 usedSymbols.append(symbol)
-                replace = definitions[symbol]
+                replace = definitions[symbol]           # replace = 2
 
+            # cI = 5 &   replaceIndex = 4
             replaceIndex = listInput[currentIndex+1]
+
             while(lastThree != 777):
                 if changedElements[replaceIndex] is not False:
                     if changedElements[replaceIndex] == 777:
@@ -87,50 +96,58 @@ def TwoPassLinker(textInput):
                         lastThree = 777
                         break
                     print("ERROR: Multiple Symbols used at Memory Map line {}".format(
-                        replaceIndex+offset))
+                        replaceIndex))
 
-                changedElements[replaceIndex] = True
+                changedElements[replaceIndex] = True        # cE[4] = True
                 if not defined:
                     print("ERROR: Symbol {} used at Memory Map line {} but not defined.".format(
-                        symbol, replaceIndex+offset))
-                num = num - lastThree + replace
-                programText[i][replaceIndex][1] = num
-                replaceIndex = lastThree
-                num = programText[i][lastThree][1]
-                lastThree = num % 1000
+                        symbol, replaceIndex))
+                num = num - lastThree + replace             # 7002 - 2 + 2
+                
+                programText[i][replaceIndex] = num
+                replaceIndex = lastThree                    # replaceIndex = 24
 
+                num = programText[i][lastThree] // 10
+                lastThree = num % 1000
+                
+        
             if changedElements[replaceIndex] is not False:
                 print("ERROR: Multiple Symbols used at Memory Map line {}".format(
-                    replaceIndex+offset))
+                    replaceIndex))
             changedElements[replaceIndex] = 777
             num = num - lastThree + replace
-            programText[i][replaceIndex][1] = num
+            programText[i][replaceIndex] = num
             if not defined:
                 print("ERROR: Symbol {} used at Memory Map line {} but not defined.".format(
-                    symbol, replaceIndex+offset))  # problem here
+                    symbol, replaceIndex))  # problem here
             currentIndex += 2
 
         # definition line
         n = listInput[currentIndex]
-        currentIndex += 1 + n*2
+
+        print("Might get weird:", n)
+
+        currentIndex += 1+n
+
+
         for j in range(n):
-            letter = programText[i][j][0]
-            address = programText[i][j][1]
-            if letter == "R":
-                programText[i][j][1] += offset
-                if programText[i][j][1] % 1000 > len(programText[i])-1:
+            word = (programText[i][j] % 10)
+            address = (programText[i][j]//10)
+            if word == 3:
+                # programText[i][j][1] += offset
+                if ((programText[i][j]//10) % 1000 > len(programText[i])-1):
                     print("ERROR: Relative Address {} used at Memory Map line {} exceeds size of the machine.".format(
                         address, secondPassCounter))
-                    programText[i][j][1] -= address % 1000
+                    programText[i][j] -= address % 1000
 
-            elif letter == "A":
-                if address % 1000 > 299:
+            elif word == 2:
+                if address % 1000 > 199:
                     print("ERROR: Absolute Address {} used at Memory Map line {} exceeds size of the machine.".format(
                         address, secondPassCounter))
-                    programText[i][j][1] -= address % 1000
-                    programText[i][j][1] += 299
+                    programText[i][j] -= address % 1000
+                    programText[i][j] += 199
             secondPassCounter += 1
-        offset += n
+        # offset += n
 
     # Printing everything
     print("\nSymbol Table:")
@@ -157,15 +174,12 @@ def takeInput():
     try:
         for i in range(inputSize):
             inputArray.append(input())
-
     except EOFError:
         pass
-
     inputArray = " ".join(inputArray)
     return inputArray
 
 # Prints a Dictionary
-
 
 def printDictionary(dictionary):
     for key, value in dictionary.items():
@@ -173,12 +187,11 @@ def printDictionary(dictionary):
 
 # Prints the Memory Map
 
-
 def printMemoryMap(map1):
     counter = 0
     for moduleSize in map1:
         for pair in moduleSize:
-            print("{}: {}".format(counter, pair[1]))
+            print("{}: {}".format(counter, pair))
             counter += 1
 
 
