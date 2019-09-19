@@ -1,5 +1,20 @@
 import sys
 
+"""
+Error Statements:
+• (checked) If a symbol is defined but not used, print a warning message and continue.
+• (checked) If a symbol is multiply defined, print an error message and use the value given in the first definition. 
+• (needs recheck) If a symbol is used but not defined, print an error message and use the value zero.
+• (checked) If multiple symbols are listed as used in the same instruction, print an error message and ignore all but the last usage
+given.
+• (checked) If an address appearing in a definition exceeds the size of the module, print an error message and treat the address
+as 0 (relative).
+• If an immediate address (i.e., type 1) appears on a use list, print an error message and treat the address as external
+(i.e., type 4).
+• (checked) If an external address is not on a use list, print an error message and treat it as an immediate address. ()
+• (checked) If an absolute address exceeds the size of the machine, print an error message and use the largest legal value.
+"""
+
 
 def TwoPassLinker(textInput):
 
@@ -27,8 +42,9 @@ def TwoPassLinker(textInput):
 
             # Error
             if listInput[currentIndex] in definitions:
-                print("ERROR: Symbol {} multiply defined.".format(
+                print("Error: Symbol {} multiply defined; first value used.".format(
                     listInput[currentIndex]))
+
             definitions[listInput[currentIndex]
                         ] = listInput[currentIndex+1] + offset
             currentIndex += 2           # currentIndex = 3,n,n,33
@@ -55,6 +71,8 @@ def TwoPassLinker(textInput):
     offset = 0
     usedSymbols = []
     secondPassCounter = 0
+    secondPassCounter1 = 0
+    # unusedSymbolMod = []
 
     # ----- Pass Two -----
     for i in range(moduleSize):
@@ -72,13 +90,20 @@ def TwoPassLinker(textInput):
             # cI= 5 -> 4   ; num = 70024
             num = programText[i][listInput[currentIndex+1]] // 10
             lastThree = num % 1000                  # lastThree= 2
+
+            if (programText[i][listInput[currentIndex+1]]%10 > 4):
+                print("Error: Invalid Instruction code")
+                break
+
             symbol = listInput[currentIndex]  # symbol = z
             defined = True
 
-            # Error
+            # Error: not defined but used
             if symbol not in definitions:
-                replace = 111
+                replace = 0
                 defined = False
+                # unusedSymbolMod.append(i)
+
             else:
                 usedSymbols.append(symbol)
                 replace = definitions[symbol]           # replace = 2
@@ -93,32 +118,37 @@ def TwoPassLinker(textInput):
                         num = num - lastThree + 777
                         lastThree = 777
                         break
-                    print("ERROR: Multiple Symbols used at Memory Map line {}".format(
+                    print("Error: Multiple Symbols used at Memory Map line {}".format(
                         replaceIndex + offset))
 
                 changedElements[replaceIndex] = True        # cE[4] = True
                 if not defined:
-                    print("ERROR: Symbol {} used at Memory Map line {} but not defined.".format(
-                        symbol, replaceIndex + offset))
+                    print("Error: {} used at Memory Map line {} but not defined; zero used".format(
+                    symbol, replaceIndex + offset))  # replaceIndex + offset
                 num = num - lastThree + replace             # 7002 - 2 + 2
+
+                if (programText[i][j] % 10 == 1):
+                    print("Error: Immediate address on use list at Memory Map line {}; treated as External.".format(secondPassCounter1))
 
                 programText[i][replaceIndex] = num
                 replaceIndex = lastThree                    # replaceIndex = 24
-                # print("Replace Index = ", replaceIndex)
-
                 num = programText[i][lastThree] // 10
                 lastThree = num % 1000
+                secondPassCounter1 += 1
 
             if changedElements[replaceIndex] is not False:
-                print("ERROR: Multiple Symbols used at Memory Map line {}".format(
+                print("Error: Multiple Symbols used in Memory Map line {}".format(
                     replaceIndex + offset))
             changedElements[replaceIndex] = 777
             num = num - lastThree + replace
             programText[i][replaceIndex] = num
+
             if not defined:
-                print("ERROR: Symbol {} used at Memory Map line {} but not defined.".format(
+                print("Error: {} used at Memory Map line {} but not defined; zero used".format(
                     symbol, replaceIndex + offset))  # problem here
             currentIndex += 2
+            secondPassCounter1 += 1
+            
 
         # definition line
         n = listInput[currentIndex]
@@ -127,22 +157,28 @@ def TwoPassLinker(textInput):
         for j in range(n):
             word = (programText[i][j] % 10)
             address = (programText[i][j]//10)
+            
+            # if (word
 
-            if word == 3:
+            if (programText[i][j] > 9999) and (word == 3):
                 if ((programText[i][j]//10) % 1000 > len(programText[i])-1):
-                    # print("This is the program text:", len(programText[i])-1)
-
-                    print("ERROR: Relative Address {} used at Memory Map line {} exceeds size of the machine.".format(
+                    print("Error: Relative Address {} used at Memory Map line {} exceeds size of the machine.".format(
                         address, secondPassCounter))
                     programText[i][j] -= address % 1000
                 programText[i][j] = programText[i][j]+(offset*10)
 
             elif (programText[i][j] > 9999) and (word == 2):
-                if address % 1000 > 199:
-                    print("ERROR: Absolute Address {} used at Memory Map line {} exceeds size of the machine.".format(
+                if (address % 1000) > 199:
+                    print("Error: Absolute Address {} used at Memory Map line {} exceeds size of the machine.".format(
                         address, secondPassCounter))
                     programText[i][j] -= address % 1000
                     programText[i][j] += 199
+
+            if (word == 4) and not((address) % 10 == replace):
+                print("Error: E type address not on use chain at Memory Map line {}; treated as I type.".format(
+                    secondPassCounter))
+
+
 
             if programText[i][j] > 9999:
                 programText[i][j] = programText[i][j] // 10
@@ -158,7 +194,7 @@ def TwoPassLinker(textInput):
     print("\n")
     for key, value in definitions.items():
         if key not in usedSymbols:
-            print("WARNING: {} symbol defined but not used.".format(key))
+            print("Warning: {} was defined but never used.".format(key))
 
     return
 
@@ -166,18 +202,6 @@ def TwoPassLinker(textInput):
 
 
 def takeInput():
-    # inputArray = []
-    # print("Type input below.\n")
-    # global moduleSize
-    # moduleSize = int(input())
-    # print(moduleSize)
-    # inputSize = moduleSize*3
-    # try:
-    #     for i in range(inputSize):
-    #         inputArray.append(input())
-    # except EOFError:
-    #     pass
-    # inputArray = " ".join(inputArray)
     inputArray = []
     inputName = input("Please type the input file name:")
     with open(inputName) as fileName:
@@ -202,6 +226,5 @@ def printMemoryMap(map1):
             counter += 1
 
 
-moduleSize = 0
 textInput = takeInput()
 TwoPassLinker(textInput)

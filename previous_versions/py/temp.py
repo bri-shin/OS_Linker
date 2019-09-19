@@ -1,3 +1,21 @@
+import sys
+
+"""
+Error Statements:
+• (checked) If a symbol is defined but not used, print a warning message and continue.
+• (checked) If a symbol is multiply defined, print an error message and use the value given in the first definition. 
+• (needs recheck) If a symbol is used but not defined, print an error message and use the value zero.
+• (checked) If multiple symbols are listed as used in the same instruction, print an error message and ignore all but the last usage
+given.
+• (checked) If an address appearing in a definition exceeds the size of the module, print an error message and treat the address
+as 0 (relative).
+• If an immediate address (i.e., type 1) appears on a use list, print an error message and treat the address as external
+(i.e., type 4).
+• (checked) If an external address is not on a use list, print an error message and treat it as an immediate address. ()
+• (checked) If an absolute address exceeds the size of the machine, print an error message and use the largest legal value.
+"""
+
+
 def TwoPassLinker(textInput):
 
     listInput = textInput.split()
@@ -10,7 +28,6 @@ def TwoPassLinker(textInput):
     moduleSize = listInput[0]
 
     currentIndex = 1
-    initialIndex = 2
     definitions = {}
     programText = []
     offset = 0
@@ -19,9 +36,8 @@ def TwoPassLinker(textInput):
     for i in range(moduleSize):
 
         # definition line
-        n = listInput[currentIndex]     # n = 1
-        currentIndex += 1               # currentIndex = 2
-
+        n = listInput[currentIndex]     # n = 1,0,0,1
+        currentIndex += 1               # currentIndex = 1,13,24,31
         for j in range(n):
 
             # Error
@@ -29,7 +45,7 @@ def TwoPassLinker(textInput):
                 print("Error: Symbol {} multiply defined; first value used.".format(
                     listInput[currentIndex]))
 
-            if (listInput[currentIndex+1] > listInput[(initialIndex+1)+(2*listInput[initialIndex-1])+(2*listInput[2+2*listInput[initialIndex-1]])]):
+            if listInput[currentIndex+1] > listInput[currentIndex+(2*n+1)-1]:
                 print("Error: The definition of {} is outside module {}; zero (relative) used.".format(
                     listInput[currentIndex], i))
                 definitions[listInput[currentIndex]
@@ -37,10 +53,11 @@ def TwoPassLinker(textInput):
             else:
                 definitions[listInput[currentIndex]
                             ] = listInput[currentIndex+1] + offset
-            currentIndex += 2           # currentIndex = 4
+            currentIndex += 2           # currentIndex = 3,n,n,33
 
         # use line
-        n = listInput[currentIndex]        # currentIndex = 4   &   n = 2
+        # currentIndex = 3,13,24,33 &   n = 1,1,1,1
+        n = listInput[currentIndex]
         currentIndex += 2*n + 1            # currentIndex = 6, 16, 27, 36
 
         # program text
@@ -55,9 +72,6 @@ def TwoPassLinker(textInput):
             currentIndex += 1
 
         programText.append(temp)        # current Index = 12, 23, 30
-        # print("THIS IS Initial INPUT:", type(listInput[initialIndex-1]))
-        initialIndex = initialIndex + 3 + (2*listInput[initialIndex-1])
-        print("INITIAL INDEX:", initialIndex)
 
     currentIndex = 1
     offset = 0
@@ -177,9 +191,9 @@ def TwoPassLinker(textInput):
         offset += n
 
     # Printing everything
-    print("\nSymbol Table")
+    print("\nSymbol Table:")
     printDictionary(definitions)
-    print("\nMemory Map")
+    print("\nMemory Map:")
     printMemoryMap(programText)
     print("\n")
     for key, value in definitions.items():
