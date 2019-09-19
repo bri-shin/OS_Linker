@@ -1,6 +1,16 @@
 import sys
 
 """
+Seung Heon (Brian) Shin
+shs522@nyu.edu
+N17816629
+
+1. The first pass finds the base address of each module and creates the symbol table. 
+
+2. Utilizing the base addresses and the symbol table computed in the first pass, the 
+second pass generates the actual output by relocating relative addresses and resolving 
+external references.
+
 Error Statements:
 • (checked) If a symbol is defined but not used, print a warning message and continue.
 • (checked) If a symbol is multiply defined, print an error message and use the value given in the first definition. 
@@ -18,228 +28,208 @@ as 0 (relative).
 
 def TwoPassLinker(textInput):
 
-    listInput = textInput.split()
+    inputList = textInput.split()
 
-    # modifies text input to a workable format
-    for i in range(len(listInput)):
-        if listInput[i].isdigit():
-            listInput[i] = int(listInput[i])
+    # Converting datatype of numbers from str to int
+    for i in range(len(inputList)):
+        if inputList[i].isdigit():
+            inputList[i] = int(inputList[i])
 
-    moduleSize = listInput[0]
-
+    moduleSize = inputList[0]
     currentIndex = 1
     definitions = {}
-    programText = []
-
+    programList = []
 
     offset = 0
 
     # ----- Pass One -----
     for i in range(moduleSize):
             
-        # definition line
-        n = listInput[currentIndex]     # n = 1,0,0,1
-        m = listInput[currentIndex+1+(2*n)]
-        instSize = listInput[currentIndex+2+(2*n)+(2*m)]-1
+        # definition 
+        pairSize = inputList[currentIndex]     
+        m = inputList[currentIndex+1+(2*pairSize)]
+        instSize = inputList[currentIndex+2+(2*pairSize)+(2*m)]-1
 
-        currentIndex += 1               # currentIndex = 1,13,24,31
-        for j in range(n):
+        currentIndex += 1              
+        for j in range(pairSize):
 
             # Error
-            if listInput[currentIndex] in definitions:
+            if inputList[currentIndex] in definitions:
                 print("Error: Variable {} multiply defined; first value used.".format(
-                    listInput[currentIndex]))
+                    inputList[currentIndex]))
 
-            elif (listInput[currentIndex+1] > instSize) :
+            elif (inputList[currentIndex+1] > instSize) :
                 print("Error: The definition of {} is outside module {}; zero (relative) used.".format(
-                    listInput[currentIndex], i))
-                definitions[listInput[currentIndex]
+                    inputList[currentIndex], i))
+                definitions[inputList[currentIndex]
                             ] = offset
 
             else:
-                definitions[listInput[currentIndex]
-                            ] = listInput[currentIndex+1] + offset
-            currentIndex += 2           # currentIndex = 3,n,n,33
+                definitions[inputList[currentIndex]
+                            ] = inputList[currentIndex+1] + offset
+            currentIndex += 2           
 
-        # use line
-        # currentIndex = 3,13,24,33 &   n = 1,1,1,1
-        n = listInput[currentIndex]
-        currentIndex += 2*n + 1            # currentIndex = 6, 16, 27, 36
+        # use list
+        pairSize = inputList[currentIndex]
+        currentIndex += 2*pairSize + 1   
 
-        # program text
-        # currentIndex = 6 ,16, 27, 36 &   n = 5,6,2,3
-        n = listInput[currentIndex]
-        offset += n                     # offset = 5,11,13,16
-        currentIndex += 1               # currentIndex = 7,17,28,37
+        # program 
+        pairSize = inputList[currentIndex]
+        offset += pairSize                     
+        currentIndex += 1               
         temp = []
-        for j in range(n):            # n-1 = 4,5,1,2
-            # temp.append(listInput[currentIndex:currentIndex+2])
-            temp.append(listInput[currentIndex])
+        for j in range(pairSize):            
+            temp.append(inputList[currentIndex])
             currentIndex += 1
 
-        programText.append(temp)        # current Index = 12, 23, 30
+        programList.append(temp)        
 
     currentIndex = 1
     offset = 0
     usedSymbols = []
-    secondPassCounter = 0
+    passTwo = 0
     secondPassCounter1 = 1
-    # unusedSymbolMod = []
-
+    
     # ----- Pass Two -----
     for i in range(moduleSize):
 
-        # definition line
-        n = listInput[currentIndex]     # cI = 0    ;   n = 1
-        currentIndex += 1 + 2*n         # cI = 3,
+        # definition 
+        pairSize = inputList[currentIndex]     
+        currentIndex += 1 + 2*pairSize         
 
-        # use line
-        n = listInput[currentIndex]     # n = 1
-        currentIndex += 1               # cI = 4
-        changedElements = [False] * (len(programText[i]))
+        # use list
+        pairSize = inputList[currentIndex]     
+        currentIndex += 1               
+        changedElements = [False] * (len(programList[i]))
         immediateAddressError=[]
 
-        for j in range(n):
-            # cI= 5 -> 4   ; num = 70024
-            num = programText[i][listInput[currentIndex+1]] // 10
-            lastThree = num % 1000                  # lastThree= 2
+        for j in range(pairSize):
+            num = programList[i][inputList[currentIndex+1]] // 10
+            addressField = num % 1000                  
 
-            if (programText[i][listInput[currentIndex+1]] % 10 > 4):
+            if (programList[i][inputList[currentIndex+1]] % 10 > 4):
                 print("Error: Invalid Instruction code")
                 break
 
-            symbol = listInput[currentIndex]  # symbol = z
+            symbol = inputList[currentIndex]  
             defined = True
 
             # Error: not defined but used
             if symbol not in definitions:
                 replace = 0
                 defined = False
-                # unusedSymbolMod.append(i)
-
             else:
                 usedSymbols.append(symbol)
-                replace = definitions[symbol]           # replace = 2
+                replace = definitions[symbol]           
 
-            # cI = 5 &   replaceIndex = 4
-            replaceIndex = listInput[currentIndex+1]
-            
-
-            while(lastThree != 777):
+            replaceIndex = inputList[currentIndex+1]
+        
+            while(addressField != 777):
                 if changedElements[replaceIndex] is not False:
                     if changedElements[replaceIndex] == 777:
-                        num = num - lastThree + 777
-                        lastThree = 777
+                        num = num - addressField + 777
+                        addressField = 777
                         break
                     print("Error: Multiple Symbols used at Memory Map line {}".format(
                         replaceIndex + offset))
 
-                changedElements[replaceIndex] = True        # cE[4] = True
+                changedElements[replaceIndex] = True        
                 if not defined:
                     print("Error: {} used at Memory Map line {} but not defined; zero used".format(
-                        symbol, replaceIndex + offset))  # replaceIndex + offset
-                num = num - lastThree + replace             # 7002 - 2 + 2
+                        symbol, replaceIndex + offset))  
+                num = num - addressField + replace        
 
-                if (programText[i][j] % 10 == 1):
+                if (programList[i][j] % 10 == 1):
                     print("Error: Immediate address on use list at Memory Map line {}; treated as External.".format(
                         secondPassCounter1))
                 secondPassCounter1 += 1
 
-                programText[i][replaceIndex] = num
-                replaceIndex = lastThree                    # replaceIndex = 24
-                num = programText[i][lastThree] // 10
-                lastThree = num % 1000
+                programList[i][replaceIndex] = num
+                replaceIndex = addressField       
+                num = programList[i][addressField] // 10
+                addressField = num % 1000
                 secondPassCounter1 += 1
 
             if changedElements[replaceIndex] is not False:
                 print("Error: Multiple Symbols used in Memory Map line {}".format(
                     replaceIndex + offset))
             changedElements[replaceIndex] = 777
-            num = num - lastThree + replace
-            programText[i][replaceIndex] = num
+            num = num - addressField + replace
+            programList[i][replaceIndex] = num
 
             if not defined:
                 print("Error: {} used at Memory Map line {} but not defined; zero used".format(
-                    symbol, replaceIndex + offset))  # problem here
+                    symbol, replaceIndex + offset)) 
             currentIndex += 2
             secondPassCounter1 += 1
 
-        # definition line
-        n = listInput[currentIndex]
-        currentIndex += 1+n
+        # definition 
+        pairSize = inputList[currentIndex]
+        currentIndex += 1+pairSize
 
-        for j in range(n):
-            word = (programText[i][j] % 10)
-            address = (programText[i][j]//10)
+        for j in range(pairSize):
+            word = (programList[i][j] % 10)
+            address = (programList[i][j]//10)
 
-            # if (word
-
-            if (programText[i][j] > 9999) and (word == 3):
-                if ((programText[i][j]//10) % 1000 > len(programText[i])-1):
+            if (programList[i][j] > 9999) and (word == 3):
+                if ((programList[i][j]//10) % 1000 > len(programList[i])-1):
                     print("Error: Relative Address {} used at Memory Map line {} exceeds size of the machine.".format(
-                        address, secondPassCounter))
-                    programText[i][j] -= address % 1000
-                programText[i][j] = programText[i][j]+(offset*10)
+                        address, passTwo))
+                    programList[i][j] -= address % 1000
+                programList[i][j] = programList[i][j]+(offset*10)
 
-            elif (programText[i][j] > 9999) and (word == 2):
+            elif (programList[i][j] > 9999) and (word == 2):
                 if (address % 1000) > 199:
                     print("Error: Absolute Address {} used at Memory Map line {} exceeds size of the machine.".format(
-                        address, secondPassCounter))
-                    programText[i][j] -= address % 1000
-                    programText[i][j] += 199
+                        address, passTwo))
+                    programList[i][j] -= address % 1000
+                    programList[i][j] += 199
 
-            if (programText[i][j] > 9999) and (word == 4) and not((address) % 10 == replace):
+            if (programList[i][j] > 9999) and (word == 4) and not((address) % 10 == replace):
                 print("Error: E type address not on use chain at Memory Map line {}; treated as I type.".format(
-                    secondPassCounter))
+                    passTwo))
 
-            if programText[i][j] > 9999:
-                programText[i][j] = programText[i][j] // 10
+            if programList[i][j] > 99999:
+                print("Error: program exceeds 4 decimal digits")
+                break
 
-            secondPassCounter += 1
-        offset += n
+            if programList[i][j] > 9999:
+                programList[i][j] = programList[i][j] // 10
 
-    # Printing everything
+
+            passTwo += 1
+        offset += pairSize
+
     print("\nSymbol Table")
     printDictionary(definitions)
     print("\nMemory Map")
-    printMemoryMap(programText)
+    printMemoryMap(programList)
     print("\n")
     for key, value in definitions.items():
         if key not in usedSymbols:
-            print("Warning: {} was defined in module but never used.".format(key))
-
+            print("Warning: {} was defined but never used.".format(key))
     return
 
-# Takes User Input
-
-
-def takeInput():
+# User Input
+def getUserInput():
     inputArray = []
-    
     for line in sys.stdin:
         inputArray.append(line)
-    
     userInput = " ".join(inputArray)
-
     return userInput
 
-# Prints a Dictionary
-
-
+# Priting the symbol table
 def printDictionary(dictionary):
     for key, value in dictionary.items():
         print("{}= {}".format(key, value))
 
-# Prints the Memory Map
-
-
-def printMemoryMap(map1):
-    counter = 0
-    for moduleSize in map1:
+# Printing memory table
+def printMemoryMap(memoryMap):
+    inc = 0
+    for moduleSize in memoryMap:
         for pair in moduleSize:
-            print("{}: {}".format(counter, pair))
-            counter += 1
+            print("{}: {}".format(inc, pair))
+            inc += 1
 
-
-textInput = takeInput()
+textInput = getUserInput()
 TwoPassLinker(textInput)
