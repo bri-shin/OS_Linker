@@ -5,6 +5,7 @@ Seung Heon (Brian) Shin
 shs522@nyu.edu
 N17816629
 
+Two Steps for this Two Pass Linker:
 1. The first pass finds the base address of each module and creates the symbol table. 
 
 2. Utilizing the base addresses and the symbol table computed in the first pass, the 
@@ -25,8 +26,21 @@ as 0 (relative).
 • (checked) If an absolute address exceeds the size of the machine, print an error message and use the largest legal value.
 """
 
+# Receiving User Input through redirection
+def getUserInput():
+    inputArray = []
+    for line in sys.stdin:
+        inputArray.append(line)
+    userInput = " ".join(inputArray)
+    return userInput
 
-def TwoPassLinker(textInput):
+def twoPassLinker(textInput):
+
+    # Defining Variables
+    definitions = {}
+    programList = []
+    indexCount = 1
+    baseIncrement = 0
 
     inputList = textInput.split()
 
@@ -36,156 +50,148 @@ def TwoPassLinker(textInput):
             inputList[i] = int(inputList[i])
 
     moduleSize = inputList[0]
-    currentIndex = 1
-    definitions = {}
-    programList = []
-
-    offset = 0
 
     # ----- Pass One -----
     for i in range(moduleSize):
             
-        # definition 
-        pairSize = inputList[currentIndex]     
-        m = inputList[currentIndex+1+(2*pairSize)]
-        instSize = inputList[currentIndex+2+(2*pairSize)+(2*m)]-1
+        # Defining Variables 
+        pairSize = inputList[indexCount]     
+        m = inputList[indexCount+1+(2*pairSize)]
+        instSize = inputList[indexCount+2+(2*pairSize)+(2*m)]-1
 
-        currentIndex += 1              
+        indexCount += 1              
         for j in range(pairSize):
 
             # Error
-            if inputList[currentIndex] in definitions:
+            if inputList[indexCount] in definitions:
                 print("Error: Variable {} multiply defined; first value used.".format(
-                    inputList[currentIndex]))
+                    inputList[indexCount]))
 
-            elif (inputList[currentIndex+1] > instSize) :
+            elif (inputList[indexCount+1] > instSize) :
                 print("Error: The definition of {} is outside module {}; zero (relative) used.".format(
-                    inputList[currentIndex], i))
-                definitions[inputList[currentIndex]
-                            ] = offset
+                    inputList[indexCount], i))
+                definitions[inputList[indexCount]
+                            ] = baseIncrement
 
             else:
-                definitions[inputList[currentIndex]
-                            ] = inputList[currentIndex+1] + offset
-            currentIndex += 2           
+                definitions[inputList[indexCount]
+                            ] = inputList[indexCount+1] + baseIncrement
+            indexCount += 2           
 
-        # use list
-        pairSize = inputList[currentIndex]
-        currentIndex += 2*pairSize + 1   
+        pairSize = inputList[indexCount]
+        indexCount += (2*pairSize) + 1   
 
-        # program 
-        pairSize = inputList[currentIndex]
-        offset += pairSize                     
-        currentIndex += 1               
-        temp = []
+        pairSize = inputList[indexCount]
+        indexCount += 1               
+        baseIncrement += pairSize                     
+        currentProgram = []
         for j in range(pairSize):            
-            temp.append(inputList[currentIndex])
-            currentIndex += 1
+            currentProgram.append(inputList[indexCount])
+            indexCount += 1
 
-        programList.append(temp)        
+        programList.append(currentProgram)        
 
-    currentIndex = 1
-    offset = 0
-    usedSymbols = []
-    passTwo = 0
-    secondPassCounter1 = 1
-    
     # ----- Pass Two -----
+
+    # Defining Variables
+    symbolList = []
+    indexCount = 1
+    passTwo = 0
+    passTwoCount = 1
+    baseIncrement = 0
+    
     for i in range(moduleSize):
 
-        # definition 
-        pairSize = inputList[currentIndex]     
-        currentIndex += 1 + 2*pairSize         
-
-        # use list
-        pairSize = inputList[currentIndex]     
-        currentIndex += 1               
-        changedElements = [False] * (len(programList[i]))
+        pairSize = inputList[indexCount]     
+        indexCount += (2*pairSize) + 1
         immediateAddressError=[]
+        checker = [0] * (len(programList[i]))
+        pairSize = inputList[indexCount]     
+        indexCount += 1               
+        
+        for j in range(pairSize):                  
 
-        for j in range(pairSize):
-            num = programList[i][inputList[currentIndex+1]] // 10
-            addressField = num % 1000                  
-
-            if (programList[i][inputList[currentIndex+1]] % 10 > 4):
+            if (programList[i][inputList[indexCount+1]] % 10 > 4):
                 print("Error: Invalid Instruction code")
                 break
 
-            symbol = inputList[currentIndex]  
-            defined = True
+            programDigit = programList[i][inputList[indexCount+1]] // 10
+            symbol = inputList[indexCount]  
+            addressField = programDigit % 1000
+            isDefined = True
 
             # Error: not defined but used
             if symbol not in definitions:
+                isDefined = False
                 replace = 0
-                defined = False
+
             else:
-                usedSymbols.append(symbol)
+                symbolList.append(symbol)
                 replace = definitions[symbol]           
 
-            replaceIndex = inputList[currentIndex+1]
+            replaceIndex = inputList[indexCount+1]
         
             while(addressField != 777):
-                if changedElements[replaceIndex] is not False:
-                    if changedElements[replaceIndex] == 777:
-                        num = num - addressField + 777
+                if checker[replaceIndex] is not 0:
+                    if checker[replaceIndex] == 777:
+                        programDigit = programDigit - addressField + 777
                         addressField = 777
                         break
                     print("Error: Multiple Symbols used at Memory Map line {}".format(
-                        replaceIndex + offset))
+                        replaceIndex + baseIncrement))
 
-                changedElements[replaceIndex] = True        
-                if not defined:
+                checker[replaceIndex] = 1        
+                if not isDefined:
                     print("Error: {} used at Memory Map line {} but not defined; zero used".format(
-                        symbol, replaceIndex + offset))  
-                num = num - addressField + replace        
+                        symbol, replaceIndex + baseIncrement))  
+                programDigit = programDigit - addressField + replace        
 
                 if (programList[i][j] % 10 == 1):
                     print("Error: Immediate address on use list at Memory Map line {}; treated as External.".format(
-                        secondPassCounter1))
-                secondPassCounter1 += 1
+                        passTwoCount))
+                passTwoCount += 1
 
-                programList[i][replaceIndex] = num
+                programList[i][replaceIndex] = programDigit
                 replaceIndex = addressField       
-                num = programList[i][addressField] // 10
-                addressField = num % 1000
-                secondPassCounter1 += 1
+                programDigit = programList[i][addressField] // 10
+                addressField = programDigit % 1000
+                passTwoCount += 1
 
-            if changedElements[replaceIndex] is not False:
+            if checker[replaceIndex] is not 0:
                 print("Error: Multiple Symbols used in Memory Map line {}".format(
-                    replaceIndex + offset))
-            changedElements[replaceIndex] = 777
-            num = num - addressField + replace
-            programList[i][replaceIndex] = num
+                    replaceIndex + baseIncrement))
+            checker[replaceIndex] = 777
+            programDigit = programDigit - addressField + replace
+            programList[i][replaceIndex] = programDigit
 
-            if not defined:
+            if not isDefined:
                 print("Error: {} used at Memory Map line {} but not defined; zero used".format(
-                    symbol, replaceIndex + offset)) 
-            currentIndex += 2
-            secondPassCounter1 += 1
+                    symbol, replaceIndex + baseIncrement)) 
+            indexCount += 2
+            passTwoCount += 1
 
-        # definition 
-        pairSize = inputList[currentIndex]
-        currentIndex += 1+pairSize
+        pairSize = inputList[indexCount]
+        indexCount += 1+pairSize
 
         for j in range(pairSize):
-            word = (programList[i][j] % 10)
+            instCode = (programList[i][j] % 10)
             address = (programList[i][j]//10)
 
-            if (programList[i][j] > 9999) and (word == 3):
+            if (programList[i][j] > 9999) and (instCode == 3):
                 if ((programList[i][j]//10) % 1000 > len(programList[i])-1):
                     print("Error: Relative Address {} used at Memory Map line {} exceeds size of the machine.".format(
                         address, passTwo))
                     programList[i][j] -= address % 1000
-                programList[i][j] = programList[i][j]+(offset*10)
+                programList[i][j] = programList[i][j]+(baseIncrement*10)
 
-            elif (programList[i][j] > 9999) and (word == 2):
+            elif (programList[i][j] > 9999) and (instCode == 2):
                 if (address % 1000) > 199:
                     print("Error: Absolute Address {} used at Memory Map line {} exceeds size of the machine.".format(
                         address, passTwo))
                     programList[i][j] -= address % 1000
                     programList[i][j] += 199
 
-            if (programList[i][j] > 9999) and (word == 4) and not((address) % 10 == replace):
+            if (programList[i][j] > 9999) and (instCode == 4) and not((address) % 10 == replace):
                 print("Error: E type address not on use chain at Memory Map line {}; treated as I type.".format(
                     passTwo))
 
@@ -196,40 +202,31 @@ def TwoPassLinker(textInput):
             if programList[i][j] > 9999:
                 programList[i][j] = programList[i][j] // 10
 
-
             passTwo += 1
-        offset += pairSize
+        baseIncrement += pairSize
 
     print("\nSymbol Table")
-    printDictionary(definitions)
+    symbolTable(definitions)
     print("\nMemory Map")
-    printMemoryMap(programList)
+    memoryMap(programList)
     print("\n")
     for key, value in definitions.items():
-        if key not in usedSymbols:
+        if key not in symbolList:
             print("Warning: {} was defined but never used.".format(key))
     return
 
-# User Input
-def getUserInput():
-    inputArray = []
-    for line in sys.stdin:
-        inputArray.append(line)
-    userInput = " ".join(inputArray)
-    return userInput
-
 # Priting the symbol table
-def printDictionary(dictionary):
+def symbolTable(dictionary):
     for key, value in dictionary.items():
-        print("{}= {}".format(key, value))
+        print("{}={}".format(key, value))
 
-# Printing memory table
-def printMemoryMap(memoryMap):
-    inc = 0
+# Printing memory map
+def memoryMap(memoryMap):
+    numbers = 0
     for moduleSize in memoryMap:
         for pair in moduleSize:
-            print("{}: {}".format(inc, pair))
-            inc += 1
+            print("{}: {}".format(numbers, pair))
+            numbers += 1
 
 textInput = getUserInput()
-TwoPassLinker(textInput)
+twoPassLinker(textInput)
